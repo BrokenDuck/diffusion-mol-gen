@@ -1,52 +1,33 @@
-from torch_geometric.data.data import Data
-from tqdm import tqdm
 from pathlib import Path
-from torch_geometric.datasets import QM9
+from tqdm import tqdm
 from rdkit import Chem
-from torch_geometric.transforms import BaseTransform
+
 import torch
-
-BOND_TYPE_MAP = {
-    Chem.rdchem.BondType.SINGLE: 1,
-    Chem.rdchem.BondType.DOUBLE: 2,
-    Chem.rdchem.BondType.TRIPLE: 3,
-    Chem.rdchem.BondType.AROMATIC: 4,
-}
+from torch import Tensor
+from torch_geometric.data.data import Data
+from torch_geometric.datasets import QM9
 
 
-class MakeFullyConnected(BaseTransform):
-    def __call__(self, data: Data):
-        num_nodes = data.num_nodes
-        device = data.pos.device
+class QM9Data(Data):
+    """Type checking graph class"""
 
-        # Transform to dense adjacacency matrix
-        adj = torch.zeros((num_nodes, num_nodes), dtype=torch.long, device=device)
-        if data.edge_index is not None and data.edge_index.numel() > 0:
-            edge_index = data.edge_index.to(device)
-            edge_attr = data.edge_attr.to(device)
-            adj[edge_index[0], edge_index[1]] = edge_attr
-
-        # Transform to tuples and remove self loops
-        row, col = torch.meshgrid(
-            torch.arange(num_nodes, device=device),
-            torch.arange(num_nodes, device=device),
-            indexing="ij",
-        )
-        row = row.flatten()
-        col = col.flatten()
-        mask = row != col
-        fc_edge_index = torch.stack([row[mask], col[mask]], dim=0)
-        fc_edge_attr = adj[fc_edge_index[0], fc_edge_index[1]]
-
-        data.edge_index = fc_edge_index
-        data.edge_attr = fc_edge_attr
-        return data
-
-    def __repr__(self) -> str:
-        return f"{self.__class__.__name__}()"
+    pos: Tensor  # 3D position of atoms
+    z: Tensor  # Type of atoms
+    charges: Tensor  # Formal charge of atoms
+    edge_index: Tensor  # Bonds of the molecule
+    edge_attr: Tensor  # Type of the bonds
 
 
 class GenQM9(QM9):
+    DATA_ROOT = Path.cwd() / "data" / "raw"
+
+    BOND_TYPE_MAP = {
+        Chem.rdchem.BondType.SINGLE: 1,
+        Chem.rdchem.BondType.DOUBLE: 2,
+        Chem.rdchem.BondType.TRIPLE: 3,
+        Chem.rdchem.BondType.AROMATIC: 4,
+    }
+
     def __init__(self, root: str, transform=None, pre_transform=None, pre_filter=None):
         super().__init__(root, transform, pre_transform, pre_filter)
 
@@ -54,13 +35,27 @@ class GenQM9(QM9):
     def processed_file_names(self):
         return ["gen_qm9_processed.pt"]
 
+    def _load_uncharacterized(self) -> set[int]:
+        uncharacterized_file = self.DATA_ROOT / "uncharacterized.txt"
+        indices = set()
+        with uncharacterized_file.open() as f:
+            for line in f:
+                line = line.strip()
+                if line and line[0].isdigit():
+                    indices.add(int(line.split()[0]))
+        return indices
+
     def process(self):
-        path = Path().cwd() / "data" / "qgb9.sdf"
-        supplier = Chem.SDMolSupplier(str(path), sanitize=False, removeHs=False)
+        supplier = Chem.SDMolSupplier(
+            str(self.DATA_ROOT / "qgb9.sdf"), sanitize=False, removeHs=False
+        )
+        uncharacterized = self._load_uncharacterized()
 
         data_list = []
-        for mol in tqdm(supplier, desc="Procesing QM9 Dataset"):
-            if mol is None:
+        for idx, mol in enumerate(
+            tqdm(supplier, desc="Procesing QM9 Dataset"), start=1
+        ):
+            if idx in uncharacterized and mol is None:
                 continue
 
             # Clean up molecule
@@ -75,14 +70,10 @@ class GenQM9(QM9):
                 continue
 
             # Extract node features
-            pos = []
-            atom_types = []
-            formal_charges = []
-
+            pos, atom_types, formal_charges = [], [], []
             conf = cleaned_mol.GetConformer()
             for atom in cleaned_mol.GetAtoms():
-                idx = atom.GetIdx()
-                pos.append(list(conf.GetAtomPosition(idx)))
+                pos.append(list(conf.GetAtomPosition(atom.GetIdx())))
                 atom_types.append(atom.GetAtomicNum())
                 formal_charges.append(atom.GetFormalCharge())
 
@@ -91,15 +82,13 @@ class GenQM9(QM9):
             charges = torch.tensor(formal_charges, dtype=torch.long)
 
             # Extract edges and edge features
-            edge_indices = []
-            edge_attrs = []
-
+            edge_indices, edge_attrs = [], []
             for bond in cleaned_mol.GetBonds():
                 i = bond.GetBeginAtomIdx()
                 j = bond.GetEndAtomIdx()
-                bond_type = BOND_TYPE_MAP.get(bond.GetBondType(), 1)
+                bond_type = self.BOND_TYPE_MAP.get(bond.GetBondType(), 1)
 
-                edge_indices.extend([[i, j], [j, i]])
+                edge_indices.extend([[i, j], [j, i]])  # Graph is undirected
                 edge_attrs.extend([bond_type, bond_type])
 
             if len(edge_indices) > 0:

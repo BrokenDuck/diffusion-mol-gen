@@ -4,8 +4,13 @@ from torch_geometric.loader import DataLoader
 from torch_geometric.transforms import Compose
 
 from diffusion_mol_gen.configs.base import TrainingConfig
-from diffusion_mol_gen.data.qm9_dataset import GenQM9, MakeFullyConnected
-from diffusion_mol_gen.data.transforms import MapAtomTypes, MapCharges, CenterPositions
+from diffusion_mol_gen.data.qm9_dataset import GenQM9
+from diffusion_mol_gen.data.transforms import (
+    MapAtomTypes,
+    MapCharges,
+    CenterPositions,
+    MakeFullyConnected,
+)
 
 
 class QM9DataModule(pl.LightningDataModule):
@@ -24,12 +29,14 @@ class QM9DataModule(pl.LightningDataModule):
         self.test_dataset = None
 
     def setup(self, stage: str | None = None):
-        transform = Compose([
-            MapAtomTypes(),
-            MapCharges(),
-            CenterPositions(),
-            MakeFullyConnected(),
-        ])
+        transform = Compose(
+            [
+                MapAtomTypes(),
+                MapCharges(),
+                CenterPositions(),
+                MakeFullyConnected(),
+            ]
+        )
 
         self.dataset = GenQM9(
             root=str(self.config.dataset_root),
@@ -47,7 +54,7 @@ class QM9DataModule(pl.LightningDataModule):
     def train_dataloader(self):
         assert self.train_dataset is not None
         return DataLoader(
-            self.train_dataset,  # type: ignore[arg-type]
+            self.train_dataset,  # ty:ignore[invalid-argument-type]
             batch_size=self.config.batch_size,
             shuffle=True,
             num_workers=self.config.num_workers,
@@ -57,7 +64,7 @@ class QM9DataModule(pl.LightningDataModule):
     def val_dataloader(self):
         assert self.val_dataset is not None
         return DataLoader(
-            self.val_dataset,  # type: ignore[arg-type]
+            self.val_dataset,  # ty:ignore[invalid-argument-type]
             batch_size=self.config.batch_size,
             shuffle=False,
             num_workers=self.config.num_workers,
@@ -66,7 +73,7 @@ class QM9DataModule(pl.LightningDataModule):
     def test_dataloader(self):
         assert self.test_dataset is not None
         return DataLoader(
-            self.test_dataset,  # type: ignore[arg-type]
+            self.test_dataset,  # ty:ignore[invalid-argument-type]
             batch_size=self.config.batch_size,
             shuffle=False,
             num_workers=self.config.num_workers,
@@ -77,6 +84,6 @@ class QM9DataModule(pl.LightningDataModule):
         """Empirical distribution of number of atoms per molecule."""
         if self.train_dataset is None:
             raise RuntimeError("Call setup() first")
-        sizes = torch.tensor([d.num_nodes for d in self.train_dataset])  # type: ignore[union-attr]
+        sizes = torch.tensor([d.num_nodes for d in self.train_dataset])  # ty:ignore[not-iterable, unresolved-attribute]
         counts = torch.bincount(sizes)
         return counts.float() / counts.sum()

@@ -1,13 +1,18 @@
-import torch
+"""
+The denoising model is agnostic from all the views we take here. It basically outputs the vector field of the distribution we are in.
+"""
+
 import torch.nn as nn
 from torch import Tensor
 
-from diffusion_mol_gen.configs.base import ModelConfig
-from diffusion_mol_gen.models.backbone.mol_gnn import MolGNN
-from diffusion_mol_gen.models.heads.position_head import PositionHead
-from diffusion_mol_gen.models.heads.atom_type_head import AtomTypeHead
-from diffusion_mol_gen.models.heads.charge_head import ChargeHead
-from diffusion_mol_gen.models.heads.bond_order_head import BondOrderHead
+from diffusion_mol_gen.configs import ModelConfig
+from diffusion_mol_gen.models.heads import (
+    PositionHead,
+    AtomTypeHead,
+    ChargeHead,
+    BondOrderHead,
+)
+from diffusion_mol_gen.models.egnn import MolGNN
 
 
 class Denoiser(nn.Module):

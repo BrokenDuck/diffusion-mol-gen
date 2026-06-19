@@ -80,7 +80,8 @@ class MolGenLightningModule(pl.LightningModule):
         view = self.diffusion_config.view
 
         if view == "variational":
-            loss_pos = position_loss(pred_pos, batch.pos, batch.batch)
+            assert fb.noise is not None
+            loss_pos = position_loss(pred_pos, fb.noise, batch.batch)
             loss_atom = categorical_loss(pred_atom, batch.atom_type)
             loss_charge = categorical_loss(pred_charge, batch.charge)
             loss_bond = categorical_loss(pred_bond, batch.edge_attr)
