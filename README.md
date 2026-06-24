@@ -72,7 +72,7 @@ uv run dmg train --view flow
 ```
 
 For generation:
-```
+```bash
 uv run dmg sample --help
 uv run dmg sample --view variational
 uv run dmg sample --view score
