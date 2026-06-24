@@ -1,6 +1,7 @@
 from pathlib import Path
 from tqdm import tqdm
 from rdkit import Chem
+from rdkit import RDLogger
 
 import torch
 from torch import Tensor
@@ -46,8 +47,11 @@ class GenQM9(QM9):
         return indices
 
     def process(self):
+        logger = RDLogger.logger()
+        logger.setLevel(RDLogger.ERROR)
+
         supplier = Chem.SDMolSupplier(
-            str(self.DATA_ROOT / "qgb9.sdf"), sanitize=False, removeHs=False
+            str(self.DATA_ROOT / "gdb9.sdf"), sanitize=False, removeHs=False
         )
         uncharacterized = self._load_uncharacterized()
 

@@ -1,18 +1,15 @@
-from __future__ import annotations
-
 import torch
 import pytorch_lightning as pl
 from torch_ema import ExponentialMovingAverage
 
-from diffusion_mol_gen.configs.base import ModelConfig, DiffusionConfig, TrainingConfig
+from diffusion_mol_gen.configs import ModelConfig, DiffusionConfig, TrainingConfig
 from diffusion_mol_gen.models.denoiser import Denoiser
-from diffusion_mol_gen.diffusion.unified import UnifiedDiffusion
-from diffusion_mol_gen.diffusion.continuous.variational import VariationalContinuous
-from diffusion_mol_gen.diffusion.continuous.score_sde import ScoreSDE
-from diffusion_mol_gen.diffusion.continuous.flow_matching import FlowMatchingContinuous
-from diffusion_mol_gen.diffusion.categorical.absorbing import AbsorbingStateDiffusion
-from diffusion_mol_gen.diffusion.categorical.ctmc import CTMCFlow
-from diffusion_mol_gen.training.losses import position_loss, categorical_loss, score_matching_loss
+from diffusion_mol_gen.diffusion.unified import BaseDiffusion, make_diffusion
+from diffusion_mol_gen.training.losses import (
+    position_loss,
+    categorical_loss,
+    score_matching_loss,
+)
 
 
 class MolGenLightningModule(pl.LightningModule):
@@ -39,7 +36,7 @@ class MolGenLightningModule(pl.LightningModule):
         self.training_config = training_config
 
         self.denoiser = Denoiser(model_config)
-        self.diffusion = UnifiedDiffusion(diffusion_config, model_config)
+        self.diffusion: BaseDiffusion = make_diffusion(diffusion_config, model_config)
 
         self.ema = ExponentialMovingAverage(
             self.denoiser.parameters(), decay=training_config.ema_decay
@@ -51,13 +48,21 @@ class MolGenLightningModule(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):  # noqa: ARG002
         loss, log_dict = self._shared_step(batch)
-        self.log_dict({f"train/{k}": v for k, v in log_dict.items()}, batch_size=batch.num_graphs, prog_bar=True)
+        self.log_dict(
+            {f"train/{k}": v for k, v in log_dict.items()},
+            batch_size=batch.num_graphs,
+            prog_bar=True,
+        )
         return loss
 
     def validation_step(self, batch, batch_idx):  # noqa: ARG002
         with self.ema.average_parameters():
             loss, log_dict = self._shared_step(batch)
-        self.log_dict({f"val/{k}": v for k, v in log_dict.items()}, batch_size=batch.num_graphs, prog_bar=True)
+        self.log_dict(
+            {f"val/{k}": v for k, v in log_dict.items()},
+            batch_size=batch.num_graphs,
+            prog_bar=True,
+        )
         return loss
 
     def _shared_step(self, batch):
@@ -66,14 +71,23 @@ class MolGenLightningModule(pl.LightningModule):
 
         # Forward diffusion
         fb = self.diffusion.forward_process(
-            batch.pos, batch.atom_type, batch.charge, batch.edge_attr,
-            batch.batch, edge_batch,
+            batch.pos,
+            batch.atom_type,
+            batch.charge,
+            batch.edge_attr,
+            batch.batch,
+            edge_batch,
         )
 
         # Network forward pass (timestep broadcast to graph level)
         pred_pos, pred_atom, pred_charge, pred_bond = self.denoiser(
-            fb.pos_t, fb.atom_t, fb.charge_t, fb.bond_t,
-            batch.edge_index, fb.t, batch.batch,
+            fb.pos_t,
+            fb.atom_t,
+            fb.charge_t,
+            fb.bond_t,
+            batch.edge_index,
+            fb.t,
+            batch.batch,
         )
 
         # Compute losses per view
@@ -121,6 +135,9 @@ class MolGenLightningModule(pl.LightningModule):
     # EMA
     # ------------------------------------------------------------------
 
+    def on_train_start(self):
+        self.ema.to(self.device)
+
     def on_before_zero_grad(self, optimizer):  # noqa: ARG002
         self.ema.update()
 
@@ -142,7 +159,16 @@ class MolGenLightningModule(pl.LightningModule):
             lr=tc.lr,
             weight_decay=tc.weight_decay,
         )
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
             optimizer, T_max=tc.max_epochs
         )
-        return {"optimizer": optimizer, "lr_scheduler": scheduler}
+        warmup = torch.optim.lr_scheduler.LinearLR(
+            optimizer, start_factor=0.01, total_iters=tc.warmup_steps
+        )
+        scheduler = torch.optim.lr_scheduler.SequentialLR(
+            optimizer, schedulers=[warmup, cosine], milestones=[tc.warmup_steps]
+        )
+        return {
+            "optimizer": optimizer,
+            "lr_scheduler": {"scheduler": scheduler, "interval": "step"},
+        }

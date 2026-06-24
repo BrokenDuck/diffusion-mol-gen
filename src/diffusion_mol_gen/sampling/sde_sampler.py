@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 import torch
 from torch import Tensor
 
 from diffusion_mol_gen.models.denoiser import Denoiser
-from diffusion_mol_gen.diffusion.unified import UnifiedDiffusion
+from diffusion_mol_gen.diffusion.unified import BaseDiffusion
 from diffusion_mol_gen.diffusion.continuous.score_sde import ScoreSDE
 from diffusion_mol_gen.diffusion.categorical.absorbing import AbsorbingStateDiffusion
 from diffusion_mol_gen.sampling.utils import build_fully_connected
@@ -20,7 +18,7 @@ class SDESampler:
     def __init__(
         self,
         denoiser: Denoiser,
-        diffusion: UnifiedDiffusion,
+        diffusion: BaseDiffusion,
         num_steps: int = 500,
         corrector_steps: int = 0,
         snr: float = 0.1,

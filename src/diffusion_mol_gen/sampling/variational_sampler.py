@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 import torch
 from torch import Tensor
 
 from diffusion_mol_gen.models.denoiser import Denoiser
-from diffusion_mol_gen.diffusion.unified import UnifiedDiffusion
+from diffusion_mol_gen.diffusion.unified import BaseDiffusion
 from diffusion_mol_gen.diffusion.continuous.variational import VariationalContinuous
 from diffusion_mol_gen.diffusion.categorical.d3pm import D3PM
 from diffusion_mol_gen.sampling.utils import build_fully_connected
@@ -18,7 +16,7 @@ class VariationalSampler:
     computing the posterior mean for the reverse step.
     """
 
-    def __init__(self, denoiser: Denoiser, diffusion: UnifiedDiffusion):
+    def __init__(self, denoiser: Denoiser, diffusion: BaseDiffusion):
         self.denoiser = denoiser
         self.diffusion = diffusion
         assert isinstance(diffusion.continuous, VariationalContinuous)

@@ -12,3 +12,6 @@ wheels/
 # Data files (too large for GitHub)
 data/raw/
 data/processed/
+
+# Logs
+lightning_logs/*

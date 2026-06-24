@@ -3,7 +3,7 @@ import pytorch_lightning as pl
 from torch_geometric.loader import DataLoader
 from torch_geometric.transforms import Compose
 
-from diffusion_mol_gen.configs.base import TrainingConfig
+from diffusion_mol_gen.configs import TrainingConfig
 from diffusion_mol_gen.data.qm9_dataset import GenQM9
 from diffusion_mol_gen.data.transforms import (
     MapAtomTypes,

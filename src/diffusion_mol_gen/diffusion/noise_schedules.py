@@ -12,15 +12,19 @@ class NoiseSchedule:
     for all T timesteps.
     """
 
+    # Some precomputations
     betas: Tensor
     alphas: Tensor
     alphas_cumprod: Tensor
     alphas_cumprod_prev: Tensor
+    # Forward process (ading noise)
     sqrt_alphas_cumprod: Tensor
     sqrt_one_minus_alphas_cumprod: Tensor
     log_one_minus_alphas_cumprod: Tensor
+    # Sampling process (Generation)
     sqrt_recip_alphas_cumprod: Tensor
     sqrt_recipm1_alphas_cumprod: Tensor
+    # Reverse process (Denoising)
     posterior_variance: Tensor
     posterior_log_variance_clipped: Tensor
     posterior_mean_coef1: Tensor

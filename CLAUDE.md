@@ -8,14 +8,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies
 uv sync
 
-# Run the training CLI
-uv run diffusion-mol-gen --view variational --num-timesteps 1000 --schedule cosine \
+# Train
+uv run dmg train --view variational --num-timesteps 1000 --schedule cosine \
   --max-epochs 500 --batch-size 64 --lr 2e-4 --hidden-channels 256 \
   --num-layers 6 --data-root ./data
 
 # --view options: variational | score | flow
 # --schedule options: linear | cosine
 # Add --wandb --wandb-project <name> for W&B logging
+
+# Generate molecules from a trained checkpoint
+uv run dmg sample --checkpoint path/to/best.ckpt \
+  --num-molecules 100 --output generated.sdf --device cuda
+
+# --num-atoms: integer (e.g. 9), range (e.g. 5-15), or 'sample' (QM9 distribution)
+# --num-steps: integration steps override (SDE/ODE only)
 
 # Lint / format
 uv run ruff check src/

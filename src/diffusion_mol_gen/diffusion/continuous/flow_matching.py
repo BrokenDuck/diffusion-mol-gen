@@ -1,3 +1,9 @@
+"""
+Flow matching code
+
+See https://arxiv.org/abs/2210.02747
+"""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -7,12 +13,12 @@ class FlowMatchingContinuous:
     """
     Optimal Transport (OT) flow matching for continuous (position) features.
 
-    Interpolation: x_t = (1−t)·z + t·x_1,   z ~ N(0, I)
-    Target velocity: u = x_1 − z  (constant along trajectory)
+    Interpolation: x_t = (1-t)·z + t·x_1,   z ~ N(0, I)
+    Target velocity: u = x_1 - z  (constant along trajectory)
     Network predicts: either u directly OR endpoint x̂_1
-      (endpoint param: v = (x̂_1 − x_t) / (1−t))
+      (endpoint param: v = (x̂_1 - x_t) / (1-t))
 
-    Loss: ||v_θ − u||²  (MSE on velocity)
+    Loss: ||v_θ - u||²  (MSE on velocity)
     Sampling: Euler ODE  x_{t+dt} = x_t + v_θ · dt
     """
 

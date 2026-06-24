@@ -1,10 +1,7 @@
-from __future__ import annotations
-
 import torch
 from torch import Tensor
 
 from rdkit import Chem
-from rdkit.Chem import AllChem
 
 
 # Inverse mapping: atom type index → atomic symbol
@@ -106,3 +103,15 @@ def generated_to_rdkit(
         offset += n
 
     return mols
+
+
+def write_sdf(mols: list[Chem.Mol | None], path: str) -> int:
+    """Write valid molecules to an SDF file. Returns the count of written molecules."""
+    writer = Chem.SDWriter(path)
+    count = 0
+    for mol in mols:
+        if mol is not None:
+            writer.write(mol)
+            count += 1
+    writer.close()
+    return count

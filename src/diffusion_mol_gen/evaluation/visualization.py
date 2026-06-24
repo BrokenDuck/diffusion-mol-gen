@@ -1,19 +1,10 @@
-from __future__ import annotations
-
-try:
-    import py3Dmol  # type: ignore[import-untyped]
-    HAS_PY3DMOL = True
-except ImportError:
-    HAS_PY3DMOL = False
-
+import py3Dmol
 from rdkit import Chem
-from rdkit.Chem import Draw, AllChem
+from rdkit.Chem import Draw, rdDepictor
 
 
 def view_molecule_3d(mol: Chem.Mol, style: str = "stick") -> object | None:
     """Render a molecule in 3D using py3Dmol (Jupyter)."""
-    if not HAS_PY3DMOL:
-        return None
     mb = Chem.MolToMolBlock(mol)
     viewer = py3Dmol.view(width=400, height=400)
     viewer.addModel(mb, "sdf")
@@ -26,7 +17,7 @@ def mol_grid_image(mols: list[Chem.Mol | None], mols_per_row: int = 4):
     """Return a PIL image grid of 2D molecule depictions."""
     valid = [m for m in mols if m is not None]
     for mol in valid:
-        AllChem.Compute2DCoords(mol)
+        rdDepictor.Compute2DCoords(mol)
     return Draw.MolsToGridImage(
         valid,
         molsPerRow=mols_per_row,

@@ -137,7 +137,7 @@ class EGNNLayer(nn.Module):
         diff = pos[row] - pos[col]  # [E, 3]
         dist_sq = (diff**2).sum(dim=-1, keepdim=True)  # [E, 1]
 
-        # Compute messages m_ij = φ_e(h_i, h_j, ||x_i−x_j||², e_ij)
+        # Compute messages m_ij = φ_e(h_i, h_j, ||x_i-x_j||², e_ij)
         edge_in = torch.cat([h[row], h[col], dist_sq, edge_attr], dim=-1)  # [E, 2H+1+H]
         m = self.edge_mlp(edge_in)  # [E, H]
         m = m * self.att_mlp(m)  # [E, H]

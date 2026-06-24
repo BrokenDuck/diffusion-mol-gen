@@ -1,5 +1,7 @@
 """
 DDPM Code
+
+See https://arxiv.org/abs/2006.11239
 """
 
 import torch
@@ -15,7 +17,7 @@ class VariationalContinuous:
     Forward:  q(x_t | x_0) = N(√ᾱ_t · x_0, (1-ᾱ_t) · I)
     Network:  predicts ε (the noise added during forward diffusion)
     Loss:     MSE(ε̂, ε)
-    Reverse:  recover x̂_0 from ε̂, then posterior mean of q(x_{t−1} | x_t, x̂_0)
+    Reverse:  recover x̂_0 from ε̂, then posterior mean of q(x_{t-1} | x_t, x̂_0)
     """
 
     def __init__(self, schedule: NoiseSchedule):
@@ -25,6 +27,7 @@ class VariationalContinuous:
         self, x_0: Tensor, t: Tensor, noise: Tensor | None = None
     ) -> tuple[Tensor, Tensor]:
         """
+        Forward process of DDPM
         Args:
             x_0: [N, 3] clean positions
             t:   [N] integer timestep per atom (broadcast from graph-level t)

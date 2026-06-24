@@ -1,3 +1,9 @@
+"""
+Score-matching flavored D3PM implementation
+
+See https://arxiv.org/abs/2205.14987
+"""
+
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -9,7 +15,7 @@ class AbsorbingStateDiffusion:
     """
     Categorical diffusion with an absorbing (mask) state for score-based view.
 
-    Forward: tokens are replaced by [MASK] with probability 1 − ᾱ_t.
+    Forward: tokens are replaced by [MASK] with probability 1 - ᾱ_t.
     The mask token is an extra class at index `num_classes`.
 
     Network predicts: unmasking logits (over real classes) for masked tokens.
@@ -24,7 +30,7 @@ class AbsorbingStateDiffusion:
 
     def q_sample(self, x_0: Tensor, t: Tensor) -> tuple[Tensor, Tensor]:
         """
-        Replace tokens with mask at rate (1 − ᾱ_t).
+        Replace tokens with mask at rate (1 - ᾱ_t).
         Args:
             x_0: [N] integer class indices
             t:   [N] integer timestep per token
@@ -58,16 +64,18 @@ class AbsorbingStateDiffusion:
             (ᾱ_{t-1} - ᾱ_t) / (1 - ᾱ_t)  (Gillespie-style rate).
         """
         device = x_t.device
-        alpha_bar_t = self.schedule.alphas_cumprod.to(device)[t]          # [N]
+        alpha_bar_t = self.schedule.alphas_cumprod.to(device)[t]  # [N]
         t_prev = (t - 1).clamp(min=0)
         alpha_bar_prev = self.schedule.alphas_cumprod.to(device)[t_prev]  # [N]
 
-        is_masked = (x_t == self.mask_idx)
+        is_masked = x_t == self.mask_idx
         if not is_masked.any():
             return x_t
 
         # Probability of unmasking at this step
-        unmask_prob = ((alpha_bar_prev - alpha_bar_t) / (1 - alpha_bar_t + 1e-8)).clamp(0, 1)
+        unmask_prob = ((alpha_bar_prev - alpha_bar_t) / (1 - alpha_bar_t + 1e-8)).clamp(
+            0, 1
+        )
         do_unmask = is_masked & (torch.rand_like(alpha_bar_t) < unmask_prob)
 
         probs = F.softmax(pred_logits, dim=-1)

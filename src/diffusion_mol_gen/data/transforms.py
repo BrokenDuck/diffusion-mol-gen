@@ -10,7 +10,7 @@ class MapAtomTypes(BaseTransform):
     # QM9 heavy-atom atomic numbers → 0-indexed type
     ATOM_TYPE_MAP = {1: 0, 6: 1, 7: 2, 8: 3, 9: 4}  # H, C, N, O, F
 
-    def __call__(self, data: QM9Data) -> QM9Data:
+    def forward(self, data: QM9Data) -> QM9Data:
         data.atom_type = torch.tensor(
             [self.ATOM_TYPE_MAP[z.item()] for z in data.z], dtype=torch.long
         )
@@ -22,7 +22,7 @@ class MapCharges(BaseTransform):
 
     CHARGE_OFFSET = 2  # formal charges in [-2, 3] mapped to [0, 5]
 
-    def __call__(self, data: QM9Data) -> QM9Data:
+    def forward(self, data: QM9Data) -> QM9Data:
         data.charge = (data.charge + self.CHARGE_OFFSET).clamp(0, 5)
         return data
 
@@ -30,7 +30,7 @@ class MapCharges(BaseTransform):
 class CenterPositions(BaseTransform):
     """Subtract center of mass so positions have zero mean."""
 
-    def __call__(self, data: QM9Data) -> QM9Data:
+    def forward(self, data: QM9Data) -> QM9Data:
         data.pos = data.pos - data.pos.mean(dim=0, keepdim=True)
         return data
 
@@ -41,7 +41,7 @@ class NormalizePositions(BaseTransform):
     def __init__(self, scale: float = 1.0):
         self.scale = scale
 
-    def __call__(self, data: QM9Data) -> QM9Data:
+    def forward(self, data: QM9Data) -> QM9Data:
         data.pos = data.pos / self.scale
         return data
 
@@ -49,7 +49,7 @@ class NormalizePositions(BaseTransform):
 class MakeFullyConnected(BaseTransform):
     """Make graph fully connected by adding not bonded edges. The generative model has to predict those too."""
 
-    def __call__(self, data: QM9Data):
+    def forward(self, data: QM9Data):
         num_nodes = data.num_nodes
         assert num_nodes is not None
         device = data.pos.device

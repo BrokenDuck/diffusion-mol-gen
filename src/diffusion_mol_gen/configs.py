@@ -55,6 +55,7 @@ class TrainingConfig:
     ema_decay: float = 0.999
     max_epochs: int = 500
     gradient_clip_val: float = 1.0
+    warmup_steps: int = 1000
     loss_weight_pos: float = 1.0
     loss_weight_atom: float = 1.0
     loss_weight_charge: float = 1.0

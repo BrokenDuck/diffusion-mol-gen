@@ -1,3 +1,8 @@
+"""
+Discrete Flow Matching
+
+See https://arxiv.org/abs/2407.15595
+"""
 import torch
 import torch.nn.functional as F
 from torch import Tensor
@@ -14,7 +19,7 @@ class CTMCFlow:
 
     Network predicts: p_θ(x_1 | x_t, t) — posterior over real classes for masked tokens.
     Loss: cross-entropy on masked positions; tokens already revealed are ignored.
-    Sampling: stochastic unmasking via CTMC rate  R = α'(t)/(1−α(t)).
+    Sampling: stochastic unmasking via CTMC rate  R = α'(t)/(1-α(t)).
     """
 
     def __init__(self, num_classes: int):
@@ -65,8 +70,8 @@ class CTMCFlow:
         """
         Stochastic unmasking step.
 
-        Rate of unmasking: R(t) = α'(t)/(1−α(t)) = 1/(1−t)  [for linear α]
-        Probability of unmasking in interval dt: R·dt ≈ dt/(1−t).
+        Rate of unmasking: R(t) = α'(t)/(1-α(t)) = 1/(1-t)  [for linear α]
+        Probability of unmasking in interval dt: R·dt ≈ dt/(1-t).
 
         Args:
             pred_logits: [N, K] logits from network
@@ -76,7 +81,7 @@ class CTMCFlow:
         Returns:
             x_new: [N] updated token states
         """
-        is_masked = (x_t == self.mask_idx)
+        is_masked = x_t == self.mask_idx
         if not is_masked.any():
             return x_t
 
@@ -84,7 +89,7 @@ class CTMCFlow:
         unmask_prob = min(dt / max(1 - t, 1e-6), 1.0)
         do_unmask = is_masked & (torch.rand(x_t.shape, device=x_t.device) < unmask_prob)
 
-        probs = F.softmax(pred_logits, dim=-1)          # [N, K]
+        probs = F.softmax(pred_logits, dim=-1)  # [N, K]
         sampled = torch.multinomial(probs, 1).squeeze(-1)
 
         x_new = x_t.clone()
